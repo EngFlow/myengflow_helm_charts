@@ -1,11 +1,11 @@
 # Copyright 2024 EngFlow, Inc. All rights reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,6 +54,7 @@ helm_release.declare_binary(
 helm_release.declare_binary(
     name = "helm_windows_x64",
     archive_type = "zip",
+    exe_extension = ".exe",
     sha256 = "1ef931cb40bfa049fa5ee337ec16181345d7d0c8ab863fe9b04abe320fa2ae6e",
     upstream_arch = "amd64",
     upstream_os = "windows",
@@ -67,4 +68,12 @@ use_repo(
     "helm_macos_x64",
     "helm_macos_arm64",
     "helm_windows_x64",
+)
+
+register_toolchains(
+    "//infra:helm_toolchain_linux_x64",
+    "//infra:helm_toolchain_linux_arm64",
+    "//infra:helm_toolchain_macos_x64",
+    "//infra:helm_toolchain_macos_arm64",
+    "//infra:helm_toolchain_windows_x64",
 )

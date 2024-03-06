@@ -51,3 +51,18 @@ sh_binary(
     srcs = ["helm_package.sh"],
     visibility = ["//visibility:public"],
 )
+
+sh_binary(
+    name = "compute_version",
+    srcs = ["compute-version.sh"],
+    visibility = ["//chart:__pkg__"],
+)
+
+genrule(
+    name = "gen_version",
+    outs = ["version.gen.txt"],
+    cmd = "$(location :compute_version) $@",
+    stamp = 1,
+    tools = [":compute_version"],
+    visibility = ["//chart:__pkg__"],
+)

@@ -1,0 +1,56 @@
+module(
+    name = "myengflow_helm_charts",
+    version = "1.0",
+)
+
+helm_release = use_extension("@//infra:helm_release.bzl", "helm_release_extension")
+
+helm_release.declare_binary(
+    name = "helm_linux_x64",
+    sha256 = "55a8e6dce87a1e52c61e0ce7a89bf85b38725ba3e8deb51d4a08ade8a2c70b2d",
+    upstream_arch = "amd64",
+    upstream_os = "linux",
+    version = "3.13.2",
+)
+
+helm_release.declare_binary(
+    name = "helm_linux_arm64",
+    sha256 = "f5654aaed63a0da72852776e1d3f851b2ea9529cb5696337202703c2e1ed2321",
+    upstream_arch = "arm64",
+    upstream_os = "linux",
+    version = "3.13.2",
+)
+
+helm_release.declare_binary(
+    name = "helm_macos_x64",
+    sha256 = "977c2faa49993aa8baa2c727f8f35a357576d6278d4d8618a5a010a56ad2dbee",
+    upstream_arch = "amd64",
+    upstream_os = "darwin",
+    version = "3.13.2",
+)
+
+helm_release.declare_binary(
+    name = "helm_macos_arm64",
+    sha256 = "00f00c66165ba0dcd9efdbef66a5508fb4fe4425991c0e599e0710f8ff7aa02e",
+    upstream_arch = "arm64",
+    upstream_os = "darwin",
+    version = "3.13.2",
+)
+
+helm_release.declare_binary(
+    name = "helm_windows_x64",
+    archive_type = "zip",
+    sha256 = "1ef931cb40bfa049fa5ee337ec16181345d7d0c8ab863fe9b04abe320fa2ae6e",
+    upstream_arch = "amd64",
+    upstream_os = "windows",
+    version = "3.13.2",
+)
+
+use_repo(
+    helm_release,
+    "helm_linux_x64",
+    "helm_linux_arm64",
+    "helm_macos_x64",
+    "helm_macos_arm64",
+    "helm_windows_x64",
+)

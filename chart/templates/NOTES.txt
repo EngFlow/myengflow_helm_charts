@@ -1,0 +1,15 @@
+==================================================
+  MyEngFlow Mini {{ .Chart.AppVersion }}
+==================================================
+
+1. See the service resource:
+  kubectl describe service --namespace {{ .Release.Namespace }} myengflow-mini
+
+2. Get logs (example):
+  kubectl logs --namespace {{ .Release.Namespace }} pod/myengflow-mini-0
+
+3. Upgrade:
+  {{ .Release.Service | lower }} upgrade {{ .Release.Name }} --namespace {{ .Release.Namespace }} <CHART_PATH> [VALUES...]
+
+4. Uninstall:
+  {{ .Release.Service | lower }} uninstall {{ .Release.Name }} --namespace {{ .Release.Namespace }}

@@ -1,0 +1,338 @@
+{{/*
+   * Copyright 2024 EngFlow, Inc. All rights reserved.
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *     http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   */}}
+
+{{/* ===========================================================================
+    Validate the StorageClass
+    ====================================================================== */}}
+{{- if not .Values.storage.storageClassName }}
+  {{- fail (printf "storage.storageClassName must be specified. See the README for requirements: \"helm show readme '%s-%s.tgz'\"" .Chart.Name .Chart.Version) }}
+{{- end }}
+
+{{/* ===========================================================================
+     Validate value of .Values.auth.grpc
+     ====================================================================== */}}
+{{- if .Values.auth.grpc }}
+  {{- $client_auth_allowed_values := list "deny" "none" "mtls" }}
+  {{- if not (has .Values.auth.grpc $client_auth_allowed_values) }}
+    {{- fail (cat "auth.grpc must be one of" $client_auth_allowed_values) }}
+  {{- end }}
+{{- end }}
+{{ $enable_mtls := eq "mtls" .Values.auth.grpc }}
+
+{{/* ===========================================================================
+     Validate type and value(s) of .Values.auth.http
+     ====================================================================== */}}
+{{ $http_auth_values := list }}
+{{- if .Values.auth.http }}
+  {{- if not (kindIs "slice" .Values.auth.http) }}
+    {{- fail "auth.http must be a list of strings" }}
+  {{- end }}
+
+  {{- if (eq 1 (len .Values.auth.http)) }}
+    {{/* If auth.http is single-element, it may be one of deny/none/basic/oidc. */}}
+
+    {{- range .Values.auth.http }}
+      {{- if not (has . (list "deny" "none" "basic" "oidc")) }}
+        {{- fail "auth.http must be [deny], or [none], or one or more of [basic oidc]" }}
+      {{- end }}
+      {{- $http_auth_values = append $http_auth_values . }}
+    {{- end }}
+
+  {{- else }}
+    {{/* If auth.http is multi-element, it may only contain basic or oidc. */}}
+
+    {{- range .Values.auth.http }}
+      {{- if not (has . (list "basic" "oidc")) }}
+        {{- fail "auth.http must be [deny], or [none], or one or more of [basic oidc]" }}
+      {{- end }}
+
+      {{/* If auth.http contains duplicate elements, we deduplicate here. */}}
+      {{- if not (has . $http_auth_values) }}
+        {{- $http_auth_values = append $http_auth_values . }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{ $enable_basic_auth := has "basic" $http_auth_values }}
+{{ $enable_oidc_login := has "oidc" $http_auth_values }}
+
+
+{{/* ===========================================================================
+     Validate value of .Values.remoteStorage
+     ====================================================================== */}}
+{{- if .Values.remoteStorage.endpoint }}
+  {{- $auth_allowed_values := list "none" "header" "mtls" }}
+  {{- if .Values.remoteStorage.clientAuth.method }}
+    {{- if (not (has .Values.remoteStorage.clientAuth.method $auth_allowed_values)) }}
+      {{- fail (cat "remoteStorage.clientAuth.method must be one of" $auth_allowed_values) }}
+    {{- end }}
+    {{- if (and (not .Values.remoteStorage.clientAuth.secretName) (or (eq .Values.remoteStorage.clientAuth.method "header") (eq .Values.remoteStorage.clientAuth.method "mtls"))) }}
+      {{- fail "If remoteStorage.clientAuth.method is \"header\" or \"mtls\" then you must also set remoteStorage.clientAuth.secretName" }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{/* ===========================================================================
+     Validate the value(s) of remaining .Values.*
+     ====================================================================== */}}
+{{- $override_license_server := false }}
+{{- if (lookup "v1" "Secret" .Release.Namespace "license-server-address") }}
+  {{- $override_license_server = true }}
+{{- end }}
+
+{{- $enable_server_tls := false }}
+{{- if .Values.secrets.tls.secretName }}
+  {{- $enable_server_tls = true }}
+{{- end }}
+
+{{- $mtls_ca_secret_name := "" }}
+{{- if $enable_mtls }}
+  {{- if (not $enable_server_tls) }}
+    {{/* We cannot enable mTLS without also enabling TLS. */}}
+    {{- fail "If auth.grpc=\"mtls\" then you must also set secrets.tls.secretName" }}
+  {{- end }}
+
+  {{- $mtls_ca_secret_name = .Values.secrets.mtls_ca.secretName | default "mtls-ca" }}
+{{- end }}
+
+{{- if (or $enable_basic_auth $enable_oidc_login) }}
+  {{- if (not $enable_server_tls) }}
+    {{/* We cannot enable http_auth without also enabling TLS. */}}
+    {{- fail "If auth.http contains \"basic\" and/or \"oidc\" then you must also set secrets.tls.secretName" }}
+  {{- end }}
+
+  {{- if (and $enable_basic_auth (not .Values.secrets.htpasswd.secretName)) }}
+    {{- fail "If auth.http contains \"basic\" then you must also set secrets.htpasswd.secretName" }}
+  {{- end }}
+
+  {{- if (and $enable_oidc_login (not .Values.secrets.oidc.secretName)) }}
+    {{- fail "If auth.http contains \"oidc\" then you must also set secrets.oidc.secretName" }}
+  {{- end }}
+{{- end }}
+
+{{- if not .Values.allowedUsers }}
+  {{- fail "allowedUsers parameter must not be empty" }}
+{{- end }}
+
+{{/* ===========================================================================
+     Start of main templates
+     ====================================================================== */}}
+---
+apiVersion: "apps/v1"
+kind: StatefulSet
+metadata:
+  name: "myengflow-mini"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "myengflow-mini"
+  template:
+    metadata:
+      labels:
+        app: "myengflow-mini"
+    spec:
+      securityContext:
+        # UID can be anything, doesn't have to match the actual engflow UID.
+        runAsUser: 1000
+        # GID can be anything, doesn't have to match the actual engflow GID.
+        runAsGroup: 1000
+        runAsNonRoot: true
+        # Declaring fsGroup is necessary to write the volumes; this comes from Kubernetes' docs:
+        # https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+        fsGroup: 1000
+      containers:
+        - name: "myengflow-mini"
+          image: {{ .Values.experimental.containerImage | default (printf "ghcr.io/engflow/myengflow_mini:%s" .Chart.AppVersion) | quote }}
+          {{- if .Values.experimental.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.experimental.imagePullPolicy | quote }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          command:
+            - "/usr/bin/run_mini.sh"
+            # Enable logging to the console. This is the most convenient way we can follow the logs;
+            # we can look at them with "kubectl logs -n {{ .Release.Namespace }} myengflow-mini-0".
+            # By default logs are only written to disk, so they are difficult to follow and grab.
+            - "--log_to_stderr=true"
+            # Disable remote execution. It doesn't work with MyEngFlow Mini because the base image
+            # lacks some necessary tools, such as /bin/bash that you need for every genrule.
+            - "--worker_config="
+            {{- if $enable_server_tls }}
+            - "--public_port=8080"
+            - "--public_bind_to_any=true"
+            - "--insecure=false"
+            - "--tls_certificate=/etc/engflow/tls/tls.crt"
+            - "--tls_key=/etc/engflow/tls/tls.key"
+            {{- end }}
+            {{- if .Values.auth.grpc }}
+            - {{ printf "--client_auth=%s" .Values.auth.grpc | quote }}
+              {{- if $enable_mtls }}
+            - "--tls_trusted_certificate=/etc/engflow/mtls_ca/tls.crt"
+            - "--tls_trusted_key=/etc/engflow/mtls_ca/tls.key"
+            - "--experimental_jwt_auth=true"
+              {{- end }}
+            {{- end }}
+            {{- if $http_auth_values }}
+              {{- if (eq 1 (len $http_auth_values)) }}
+            - {{ printf "--http_auth=%s" (first $http_auth_values) | replace "oidc" "oidc_login" | quote }}
+              {{- else }}
+            # Discard any inherited http_auth values.
+            - "--http_auth="
+                {{- range $http_auth_values }}
+            - {{ printf "--http_auth+=%s" . | replace "oidc" "oidc_login" | quote}}
+                {{- end }}
+              {{- end }}
+              {{- if (and $enable_basic_auth .Values.secrets.htpasswd.secretName) }}
+            - "--basic_auth_htpasswd=/etc/engflow/htpasswd/htpasswd.txt"
+              {{- end }}
+              {{- if (and $enable_oidc_login .Values.secrets.oidc.secretName) }}
+            - "--oidc_config=/etc/engflow/oidc/oidc-config.json"
+              {{- end }}
+            {{- end }}
+            # Discard any inherited principal_based_permissions values.
+            - "--principal_based_permissions=*->none"
+            {{- range .Values.allowedUsers }}
+            - "--principal_based_permissions+={{ . }}->admin"
+            {{- end }}
+            {{- if .Values.remoteStorage.endpoint }}
+            - {{ printf "--remote_storage=%s" .Values.remoteStorage.endpoint | quote }}
+              {{- if (eq .Values.remoteStorage.clientAuth.method "header") }}
+            - "--credentials_json_file=/etc/engflow/remote_storage/auth/auth.json"
+              {{- else if (eq .Values.remoteStorage.clientAuth.method "mtls") }}
+            - "--tls_client_key=/etc/engflow/remote_storage/auth/tls.key"
+            - "--tls_client_certificate=/etc/engflow/remote_storage/auth/tls.crt"
+              {{- end }}
+              {{- if .Values.remoteStorage.serverCertCmName }}
+            - "--tls_server_certificate=/etc/engflow/remote_storage/ca/ca.crt"
+              {{- end }}
+            {{- end }}
+          env:
+            - name: "CLUSTER_UUID"
+              valueFrom:
+                secretKeyRef:
+                  name: "cluster-uuid"
+                  key: "uuid.txt"
+            - name: "DATA_DIR"
+              value: "/ef-data"
+            {{- if $enable_server_tls }}
+            - name: "ENVOY_BINARY"
+              value: ""
+            {{- end }}
+            {{- if $override_license_server }}
+            - name: "LICENSE_SERVER_ADDRESS"
+              valueFrom:
+                secretKeyRef:
+                  name: "license-server-address"
+                  key: "url"
+            - name: "METRIC_TELEMETRY_ENDPOINT"
+              valueFrom:
+                # Intentionally the same as the license-server endpoint: they need to be the same.
+                # The metrics endpoint returns INVALID_ARGUMENT if it doesn't know the contract.
+                secretKeyRef:
+                  name: "license-server-address"
+                  key: "url"
+            {{- end }}
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: "data-disk"
+              mountPath: "/ef-data"
+            - name: "data-disk"
+              mountPath: "/tmp"
+            {{- if $enable_server_tls }}
+            - name: "server-tls"
+              readOnly: true
+              mountPath: "/etc/engflow/tls"
+            {{- end }}
+            {{- if (and $enable_oidc_login .Values.secrets.oidc.secretName) }}
+            - name: "oidc"
+              readOnly: true
+              mountPath: "/etc/engflow/oidc"
+            {{- end }}
+            {{- if (and $enable_basic_auth .Values.secrets.htpasswd.secretName) }}
+            - name: "htpasswd"
+              readOnly: true
+              mountPath: "/etc/engflow/htpasswd"
+            {{- end }}
+            {{- if $enable_mtls }}
+            - name: "mtls-ca"
+              readOnly: true
+              mountPath: "/etc/engflow/mtls_ca"
+            {{- end }}
+            {{- if (and .Values.remoteStorage.endpoint (or (eq .Values.remoteStorage.clientAuth.method "header") (eq .Values.remoteStorage.clientAuth.method "mtls"))) }}
+            - name: "remote-storage-auth"
+              readOnly: true
+              mountPath: "/etc/engflow/remote_storage/auth"
+            {{- end }}
+            {{- if (and .Values.remoteStorage.endpoint .Values.remoteStorage.serverCertCmName) }}
+            - name: "remote-storage-ca"
+              readOnly: true
+              mountPath: "/etc/engflow/remote_storage/ca"
+            {{- end }}
+      volumes:
+        - name: "cluster-uuid"
+          secret:
+            secretName: "cluster-uuid"
+        {{- if $enable_server_tls }}
+        - name: "server-tls"
+          secret:
+            secretName: {{ .Values.secrets.tls.secretName | quote }}
+        {{- end }}
+        {{- if $enable_mtls }}
+        - name: "mtls-ca"
+          secret:
+            secretName: {{ $mtls_ca_secret_name | quote }}
+        {{- end }}
+        {{- if (and $enable_oidc_login .Values.secrets.oidc.secretName) }}
+        - name: "oidc"
+          secret:
+            secretName: {{ .Values.secrets.oidc.secretName | quote }}
+        {{- end }}
+        {{- if (and $enable_basic_auth .Values.secrets.htpasswd.secretName) }}
+        - name: "htpasswd"
+          secret:
+            secretName: {{ .Values.secrets.htpasswd.secretName | quote }}
+        {{- end }}
+        {{- if $override_license_server }}
+        - name: "license-server-address"
+          secret:
+            secretName: "license-server-address"
+        {{- end }}
+        {{- if (and .Values.remoteStorage.endpoint (or (eq .Values.remoteStorage.clientAuth.method "header") (eq .Values.remoteStorage.clientAuth.method "mtls"))) }}
+        - name: "remote-storage-auth"
+          secret:
+            secretName: {{ .Values.remoteStorage.clientAuth.secretName | quote }}
+        {{- end }}
+        {{- if (and .Values.remoteStorage.endpoint .Values.remoteStorage.serverCertCmName) }}
+        - name: "remote-storage-ca"
+          configMap:
+            name: {{ .Values.remoteStorage.serverCertCmName | quote }}
+            items:
+            - key: "ca.crt"
+              path: "ca.crt"
+        {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: "data-disk"
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        storageClassName: {{ .Values.storage.storageClassName | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.storage.size | default "100Gi" | quote }}

@@ -1,0 +1,22 @@
+apiVersion: v2
+name: "myengflow-mini"
+description: "MyEngFlow Mini is a lightweight, single-node, standalone version of the EngFlow Remote Execution platform. MyEngFlow Mini implements a remote cache and a Build & Test UI."
+keywords:
+  - "bazel"
+  - "build"
+  - "rbe"
+  - "remote execution"
+  - "remote caching"
+  - "build and test UI"
+
+type: application
+version: "0.0.0"
+appVersion: "0.0.0"
+
+home: "https://my.engflow.com"
+icon: "https://www.engflow.com/img/icon/apple-touch-icon.png"
+maintainers:
+ - name: "EngFlow Inc."
+   email: "contact+mini@engflow.com"
+   url: "https://www.engflow.com"
+

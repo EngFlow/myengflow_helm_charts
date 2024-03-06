@@ -17,6 +17,8 @@ module(
     version = "1.0",
 )
 
+bazel_dep(name = "rules_pkg", version = "0.10.1")
+
 helm_release = use_extension("@//infra:helm_release.bzl", "helm_release_extension")
 
 helm_release.declare_binary(

@@ -1,0 +1,164 @@
+{{/*
+   * Copyright 2024 EngFlow, Inc. All rights reserved.
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *     http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   */}}
+
+{{/*
+  If the user did not specify an existing Secret name for mTLS CA, and there is no "mtls-ca" Secret,
+  then create one.
+
+  Unfortunately we cannot use Helm's built-in genCA function, because it generates the private key
+  in the wrong format. MyEngFlow Mini needs a PKCS#8 PEM key.
+
+  There is no built-in function to convert the key, so we would have to shell out to openssl anyway;
+  at which point we may as well do the whole key generation from openssl.
+*/}}
+{{- if not (or .Values.secrets.mtls_ca.secretName (lookup "v1" "Secret" .Release.Namespace "mtls-ca")) }}
+
+---
+# The service account that the cleanup job will use.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: "secret-creator-sa"
+  annotations:
+    "helm.sh/hook": "pre-install,pre-upgrade,pre-rollback"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed,before-hook-creation"
+
+---
+# The role that will allow the service account to create a Secret.
+apiVersion: "rbac.authorization.k8s.io/v1"
+kind: Role
+metadata:
+  name: "secret-creator"
+  annotations:
+    "helm.sh/hook": "pre-install,pre-upgrade,pre-rollback"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed,before-hook-creation"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+
+---
+# The Role <-> ServiceAccount binding.
+apiVersion: "rbac.authorization.k8s.io/v1"
+kind: RoleBinding
+metadata:
+  name: "secret-creator"
+  annotations:
+    "helm.sh/hook": "pre-install,pre-upgrade,pre-rollback"
+    "helm.sh/hook-weight": "-4"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed,before-hook-creation"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: Role
+  name: "secret-creator"
+subjects:
+  - kind: ServiceAccount
+    name: "secret-creator-sa"
+
+---
+# A pre-install job that generates a new mTLS CA and adds it as a Secret.
+#
+# It runs openssl to generate the key and certificate, then runs curl to talk to the Kubernetes API
+# server. We use curl, not kubectl, because its container is smaller.
+apiVersion: "batch/v1"
+kind: Job
+metadata:
+  name: "secret-creator-job"
+  annotations:
+    "helm.sh/hook": "pre-install,pre-upgrade,pre-rollback"
+    "helm.sh/hook-weight": "-3"
+    "helm.sh/hook-delete-policy": "hook-succeeded"
+spec:
+  completions: 1
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+      serviceAccountName: "secret-creator-sa"
+      volumes:
+        # Ephemeral in-memory volume that we mount to both containers so they can share data.
+        - name: "scratch-space"
+          emptyDir:
+            sizeLimit: "1Mi"
+      initContainers:
+        - name: "openssl"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          image: "alpine/openssl"
+          volumeMounts:
+            - mountPath: "/wd"
+              name: "scratch-space"
+          workingDir: "/wd"
+          command:
+            - "/bin/sh"
+            - "-c"
+            # Create a RSA key pair and certificate, then base64-encode the files.
+            #
+            # The next container will create a Kubernetes Secret with the base64-encoded payloads.
+            # The two containers share data via the "/wd" directory.
+            - "openssl genrsa -out ca.rsa 4096 &&
+              openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in ca.rsa -out ca.key &&
+              openssl req -x509 -new -nodes -key ca.rsa -sha256 -days 365 -out ca.crt -subj '/O=EngFlow/OU=MyEngFlow Mini mTLS CA' &&
+              base64 -w0 </wd/ca.crt >/wd/ca.crt.b64 &&
+              base64 -w0 </wd/ca.key >/wd/ca.key.b64"
+      containers:
+        - name: "curl"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          image: "curlimages/curl"
+          workingDir: "/var/run/secrets/kubernetes.io/serviceaccount"
+          volumeMounts:
+            - mountPath: "/wd"
+              name: "scratch-space"
+          env:
+            - name: "NAMESPACE"
+              valueFrom:
+                fieldRef:
+                  fieldPath: "metadata.namespace"
+            - name: "URL"
+              value: "https://kubernetes.default.svc/api/v1/namespaces/$(NAMESPACE)/secrets"
+          command:
+            - "/bin/sh"
+            - "-c"
+            # Make a POST request to the Kubernetes REST API [1] to create a Secret [2].
+            #
+            # The request has a JSON payload whose "data" field contains the base64-encoded TLS key
+            # and certificate, created by the init-container ("openssl").
+            #
+            # The resulting Secret is annotated with "helm.sh/resource-policy: keep". This prevents
+            # Helm from deleting it, so the mTLS CA Secret is never deleted automatically. Since
+            # it's what signs JWTs and client credentials, those remain valid between MyEngFlow Mini
+            # installations too.
+            #
+            # [1]: https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/#directly-accessing-the-rest-api-
+            # [2]: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/secret-v1/#create-create-a-secret
+            - "curl --silent --show-error --fail
+              --request POST
+              --header \"Authorization: Bearer $(cat token)\"
+              --header \"Content-Type:application/json;charset=UTF-8\"
+              --output /dev/null
+              --cacert ca.crt
+              --data '{\"apiVersion\":\"v1\",\"kind\":\"Secret\",\"type\":\"kubernetes.io/tls\",\"metadata\":{\"name\":\"mtls-ca\"},\"data\":{\"tls.key\":\"'\"$$(cat /wd/ca.key.b64)\"'\",\"tls.crt\":\"'\"$(cat /wd/ca.crt.b64)\"'\"}}'
+              \"$${URL}\""
+
+{{- end }}

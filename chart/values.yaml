@@ -1,0 +1,54 @@
+# Copyright 2024 EngFlow, Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Documentation: see README.md
+
+clusterUuid:
+  fromValue:
+    value: ""
+
+allowedUsers: []
+
+auth:
+  grpc: ""  # deny | none | mtls
+  http: []  # deny | none | basic | oidc
+
+remoteStorage:
+  endpoint: ""  # protocol://host:port (where protocol ::= grpc | grpcs)
+  serverCertCmName: ""  # name of a ConfigMap, with key "ca.crt" and content of a X.509 cert
+                        # that is either the server's own cert or that of its issuer (CA cert)
+  clientAuth:
+    method: "none" # none | header | mtls
+    secretName: "" # - when method=header, then a generic secret with one entry: "auth.json"
+                   # - when method=mtls, then tls secret
+
+endpoint:
+  createService: true
+storage:
+  size: "100Gi"
+  storageClassName: ""
+secrets:
+  tls:
+    secretName: ""
+  mtls_ca:
+    secretName: ""
+  oidc:
+    secretName: ""
+  htpasswd:
+    secretName: ""
+
+# Only meant for development.
+experimental:
+  containerImage: ""
+  imagePullPolicy: ""

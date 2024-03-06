@@ -23,7 +23,7 @@ To install a release version of our Helm Chart:
 - Sign up on the [MyEngFlow website][1].
     - As of 2024-03-06 sign-up is restricted and not yet available publicly.
     - During sign-up you get a unique key ("cluster UUID"), which is required to operate MyEngFlow
-      Mini.
+      Mini. This is basically a password; you should keep it secret.
 
 To build a Helm chart from source:
 - Install [Bazelisk][2]. Alternatively, install [Bazel][3] 6.3 or newer (a version that supports

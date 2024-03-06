@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 3,
-  "moduleFileHash": "6d86ee226590e3161b692a73f220a42bd2d96bbbbbdf125a3a02d2b888d4b9f6",
+  "moduleFileHash": "07a2b421eb0971632d1126e4b1aaaecfbeeae5403338a2979e027bbacd3f1e79",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -30,7 +30,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 6,
+            "line": 20,
             "column": 29
           },
           "imports": {
@@ -54,7 +54,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 8,
+                "line": 22,
                 "column": 28
               }
             },
@@ -70,7 +70,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 16,
+                "line": 30,
                 "column": 28
               }
             },
@@ -86,7 +86,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 24,
+                "line": 38,
                 "column": 28
               }
             },
@@ -102,7 +102,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 32,
+                "line": 46,
                 "column": 28
               }
             },
@@ -119,7 +119,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 40,
+                "line": 54,
                 "column": 28
               }
             }
@@ -727,7 +727,7 @@
   "moduleExtensions": {
     "//infra:helm_release.bzl%helm_release_extension": {
       "general": {
-        "bzlTransitiveDigest": "7AinsHTb9Ama5iIhTtIXjYDN5S9yqjLJ9VDWyC5cdAM=",
+        "bzlTransitiveDigest": "XfQJYLHJ5SRBREqqY/zvwjxWFSKhFicW1LU8E1N9O9U=",
         "accumulatedFileDigests": {},
         "envVariables": {},
         "generatedRepoSpecs": {
@@ -739,7 +739,6 @@
               "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"darwin-arm64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "00f00c66165ba0dcd9efdbef66a5508fb4fe4425991c0e599e0710f8ff7aa02e",
               "urls": [
-                "https://storage.googleapis.com/engflow-tools-public/helm/helm-v3.13.2-darwin-arm64.tar.gz",
                 "https://get.helm.sh/helm-v3.13.2-darwin-arm64.tar.gz"
               ]
             }
@@ -752,7 +751,6 @@
               "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"windows-amd64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "1ef931cb40bfa049fa5ee337ec16181345d7d0c8ab863fe9b04abe320fa2ae6e",
               "urls": [
-                "https://storage.googleapis.com/engflow-tools-public/helm/helm-v3.13.2-windows-amd64.zip",
                 "https://get.helm.sh/helm-v3.13.2-windows-amd64.tar.gz"
               ]
             }
@@ -765,7 +763,6 @@
               "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"linux-arm64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "f5654aaed63a0da72852776e1d3f851b2ea9529cb5696337202703c2e1ed2321",
               "urls": [
-                "https://storage.googleapis.com/engflow-tools-public/helm/helm-v3.13.2-linux-arm64.tar.gz",
                 "https://get.helm.sh/helm-v3.13.2-linux-arm64.tar.gz"
               ]
             }
@@ -778,7 +775,6 @@
               "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"darwin-amd64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "977c2faa49993aa8baa2c727f8f35a357576d6278d4d8618a5a010a56ad2dbee",
               "urls": [
-                "https://storage.googleapis.com/engflow-tools-public/helm/helm-v3.13.2-darwin-amd64.tar.gz",
                 "https://get.helm.sh/helm-v3.13.2-darwin-amd64.tar.gz"
               ]
             }
@@ -791,7 +787,6 @@
               "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"linux-amd64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "55a8e6dce87a1e52c61e0ce7a89bf85b38725ba3e8deb51d4a08ade8a2c70b2d",
               "urls": [
-                "https://storage.googleapis.com/engflow-tools-public/helm/helm-v3.13.2-linux-amd64.tar.gz",
                 "https://get.helm.sh/helm-v3.13.2-linux-amd64.tar.gz"
               ]
             }

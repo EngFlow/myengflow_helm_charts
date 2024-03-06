@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 3,
-  "moduleFileHash": "07a2b421eb0971632d1126e4b1aaaecfbeeae5403338a2979e027bbacd3f1e79",
+  "moduleFileHash": "1f9744bdbd43bf1d9e81aee709f65d6ecb08179bfed56fe33440ef03e85f675c",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -22,7 +22,13 @@
       "key": "<root>",
       "repoName": "myengflow_helm_charts",
       "executionPlatformsToRegister": [],
-      "toolchainsToRegister": [],
+      "toolchainsToRegister": [
+        "//infra:helm_toolchain_linux_x64",
+        "//infra:helm_toolchain_linux_arm64",
+        "//infra:helm_toolchain_macos_x64",
+        "//infra:helm_toolchain_macos_arm64",
+        "//infra:helm_toolchain_windows_x64"
+      ],
       "extensionUsages": [
         {
           "extensionBzlFile": "@myengflow_helm_charts//infra:helm_release.bzl",
@@ -111,6 +117,7 @@
               "attributeValues": {
                 "name": "helm_windows_x64",
                 "archive_type": "zip",
+                "exe_extension": ".exe",
                 "sha256": "1ef931cb40bfa049fa5ee337ec16181345d7d0c8ab863fe9b04abe320fa2ae6e",
                 "upstream_arch": "amd64",
                 "upstream_os": "windows",
@@ -727,7 +734,7 @@
   "moduleExtensions": {
     "//infra:helm_release.bzl%helm_release_extension": {
       "general": {
-        "bzlTransitiveDigest": "XfQJYLHJ5SRBREqqY/zvwjxWFSKhFicW1LU8E1N9O9U=",
+        "bzlTransitiveDigest": "/BGkpw090Aqvm8yYoCO//chHr0Th02JUoDwSk4bURs0=",
         "accumulatedFileDigests": {},
         "envVariables": {},
         "generatedRepoSpecs": {
@@ -736,7 +743,7 @@
             "ruleClassName": "http_archive",
             "attributes": {
               "name": "_main~helm_release_extension~helm_macos_arm64",
-              "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"darwin-arm64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
+              "build_file_content": "\nalias(\n    name = \"helm\",\n    actual = \"darwin-arm64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "00f00c66165ba0dcd9efdbef66a5508fb4fe4425991c0e599e0710f8ff7aa02e",
               "urls": [
                 "https://get.helm.sh/helm-v3.13.2-darwin-arm64.tar.gz"
@@ -748,10 +755,10 @@
             "ruleClassName": "http_archive",
             "attributes": {
               "name": "_main~helm_release_extension~helm_windows_x64",
-              "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"windows-amd64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
+              "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"windows-amd64/helm.exe\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "1ef931cb40bfa049fa5ee337ec16181345d7d0c8ab863fe9b04abe320fa2ae6e",
               "urls": [
-                "https://get.helm.sh/helm-v3.13.2-windows-amd64.tar.gz"
+                "https://get.helm.sh/helm-v3.13.2-windows-amd64.zip"
               ]
             }
           },
@@ -760,7 +767,7 @@
             "ruleClassName": "http_archive",
             "attributes": {
               "name": "_main~helm_release_extension~helm_linux_arm64",
-              "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"linux-arm64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
+              "build_file_content": "\nalias(\n    name = \"helm\",\n    actual = \"linux-arm64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "f5654aaed63a0da72852776e1d3f851b2ea9529cb5696337202703c2e1ed2321",
               "urls": [
                 "https://get.helm.sh/helm-v3.13.2-linux-arm64.tar.gz"
@@ -772,7 +779,7 @@
             "ruleClassName": "http_archive",
             "attributes": {
               "name": "_main~helm_release_extension~helm_macos_x64",
-              "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"darwin-amd64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
+              "build_file_content": "\nalias(\n    name = \"helm\",\n    actual = \"darwin-amd64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "977c2faa49993aa8baa2c727f8f35a357576d6278d4d8618a5a010a56ad2dbee",
               "urls": [
                 "https://get.helm.sh/helm-v3.13.2-darwin-amd64.tar.gz"
@@ -784,7 +791,7 @@
             "ruleClassName": "http_archive",
             "attributes": {
               "name": "_main~helm_release_extension~helm_linux_x64",
-              "build_file_content": "\nalias(\n    name = \"helm.exe\",\n    actual = \"linux-amd64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
+              "build_file_content": "\nalias(\n    name = \"helm\",\n    actual = \"linux-amd64/helm\",\n    visibility = [\"//visibility:public\"]\n)\n",
               "sha256": "55a8e6dce87a1e52c61e0ce7a89bf85b38725ba3e8deb51d4a08ade8a2c70b2d",
               "urls": [
                 "https://get.helm.sh/helm-v3.13.2-linux-amd64.tar.gz"

@@ -37,13 +37,13 @@ toolchain_type(
 
 [helm_toolchain(
     name = "helm_bin_%s_%s" % (os, arch),
-    helm_bin = "@helm_%s_%s//:helm.exe" % (os, arch),
-) for os, arch in [
-    ("linux", "x64"),
-    ("linux", "arm64"),
-    ("macos", "x64"),
-    ("macos", "arm64"),
-    ("windows", "x64"),
+    helm_bin = "@helm_%s_%s//:helm%s" % (os, arch, ext),
+) for os, arch, ext in [
+    ("linux", "x64", ""),
+    ("linux", "arm64", ""),
+    ("macos", "x64", ""),
+    ("macos", "arm64", ""),
+    ("windows", "x64", ".exe"),
 ]]
 
 sh_binary(

@@ -54,6 +54,7 @@ helm_release.declare_binary(
 helm_release.declare_binary(
     name = "helm_windows_x64",
     archive_type = "zip",
+    exe_extension = ".exe",
     sha256 = "1ef931cb40bfa049fa5ee337ec16181345d7d0c8ab863fe9b04abe320fa2ae6e",
     upstream_arch = "amd64",
     upstream_os = "windows",
